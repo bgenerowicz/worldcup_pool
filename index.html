@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b3d2e" />
+  <title>Family World Cup Pool 2026</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">⚽ Family World Cup Pool</div>
+    <div class="who" id="who"></div>
+  </header>
+
+  <!-- Name screen -->
+  <section id="nameScreen" class="screen name-screen hidden">
+    <div class="card">
+      <h1>Welcome! 🏆</h1>
+      <p>Pick the result of every group-stage match. 1 point for each correct outcome. Most points wins.</p>
+      <label for="nameInput">Your name</label>
+      <input id="nameInput" type="text" placeholder="e.g. Grandpa Joe" autocomplete="name" />
+      <button id="nameSave" class="primary">Start picking</button>
+      <p class="hint">Use the same name every time so your picks stay together.</p>
+    </div>
+  </section>
+
+  <!-- Main app -->
+  <main id="app" class="hidden">
+    <nav class="tabs">
+      <button class="tab active" data-tab="picks">My Picks</button>
+      <button class="tab" data-tab="board">Leaderboard</button>
+    </nav>
+
+    <div id="banner" class="banner hidden"></div>
+
+    <!-- Picks tab -->
+    <section id="tab-picks" class="tabpane">
+      <div class="filters">
+        <span id="progress" class="progress"></span>
+        <select id="groupFilter" aria-label="Filter by group">
+          <option value="all">All groups</option>
+        </select>
+      </div>
+      <div id="matchList"></div>
+    </section>
+
+    <!-- Leaderboard tab -->
+    <section id="tab-board" class="tabpane hidden">
+      <div id="leaderboard"></div>
+      <div id="resultsNote" class="hint"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="matches.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
