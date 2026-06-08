@@ -12,6 +12,17 @@ const OUTCOMES = [
   { key: "draw", label: "X", sub: "Draw" },
   { key: "away", label: "2", sub: "Away win" }
 ];
+// Knockout matches have no draw — you pick who advances.
+const KO_OUTCOMES = [
+  { key: "home", label: "1", sub: "advances" },
+  { key: "away", label: "2", sub: "advances" }
+];
+const outcomesFor = m => (m.ko ? KO_OUTCOMES : OUTCOMES);
+
+// Matches currently live in the app: group stage always, knockout once enabled.
+function activeMatches() {
+  return MATCHES.concat(KNOCKOUT_ENABLED ? KNOCKOUT_MATCHES : []);
+}
 
 // --- state ---
 let me = localStorage.getItem("wc_name") || "";
@@ -85,9 +96,9 @@ function showBanner(msg, warn) {
 }
 
 function renderProgress() {
-  const open = MATCHES.length;
-  const done = MATCHES.filter(m => myPicks[m.id]).length;
-  $("#progress").textContent = `${done} / ${open} picked`;
+  const list = activeMatches();
+  const done = list.filter(m => myPicks[m.id]).length;
+  $("#progress").textContent = `${done} / ${list.length} picked`;
 }
 
 function makeMatchCard(m) {
@@ -96,7 +107,7 @@ function makeMatchCard(m) {
   if (locked) card.classList.add("locked");
 
   const top = el("div", "match-top");
-  top.appendChild(el("span", "grp", "Group " + m.group));
+  top.appendChild(el("span", "grp", m.ko ? m.round : "Group " + m.group));
   top.appendChild(el("span", "lock" + (locked ? " locked" : ""), locked ? "🔒 Locked" : "Open"));
   card.appendChild(top);
 
@@ -106,8 +117,9 @@ function makeMatchCard(m) {
   const opts = el("div", "opts");
 
   const actual = results[m.id];
-  OUTCOMES.forEach(o => {
+  outcomesFor(m).forEach(o => {
     const b = el("button", "opt", `${o.label}<small>${o.sub}</small>`);
+    b.dataset.key = o.key;
     if (myPicks[m.id] === o.key) b.classList.add("sel");
     if (actual) {
       if (o.key === actual) b.classList.add("actual");
@@ -150,15 +162,17 @@ function renderMatches() {
   const filter = $("#groupFilter").value;
   const list = $("#matchList");
   list.innerHTML = "";
-  let lastDay = null;
-  MATCHES.filter(m => filter === "all" || m.group === filter).forEach(m => {
-    if (m.date !== lastDay) {
-      list.appendChild(el("div", "day-head", fmtDay(m.date)));
-      lastDay = m.date;
+  let lastHeader = null;
+  // Knockout matches have no group letter, so a group filter hides them.
+  activeMatches().filter(m => filter === "all" || m.group === filter).forEach(m => {
+    const header = m.ko ? m.round : fmtDay(m.date);
+    if (header !== lastHeader) {
+      list.appendChild(el("div", "day-head", header));
+      lastHeader = header;
     }
     list.appendChild(makeMatchCard(m));
   });
-  if (!KNOCKOUT_MATCHES.length) {
+  if (!KNOCKOUT_ENABLED && (filter === "all")) {
     list.appendChild(el("div", "hint", "🏆 Knockout-round predictions unlock once the group stage finishes."));
   }
   renderProgress();
@@ -168,8 +182,8 @@ async function choose(matchId, pick, card) {
   myPicks[matchId] = pick;
   localStorage.setItem("wc_picks", JSON.stringify(myPicks));
   // optimistic UI
-  card.querySelectorAll(".opt").forEach((b, i) => {
-    b.classList.toggle("sel", OUTCOMES[i].key === pick);
+  card.querySelectorAll(".opt").forEach(b => {
+    b.classList.toggle("sel", b.dataset.key === pick);
   });
   renderProgress();
   const ok = await savePickRemote(matchId, pick);
@@ -237,10 +251,27 @@ function populateGroupFilter() {
   });
 }
 
+function logout() {
+  if (!confirm("Log out / switch player? Your picks are safely saved on the scoreboard.")) return;
+  localStorage.removeItem("wc_name");
+  localStorage.removeItem("wc_picks");
+  me = "";
+  myPicks = {};
+  allPredictions = [];
+  results = {};
+  $("#app").classList.add("hidden");
+  $("#logout").classList.add("hidden");
+  $("#who").textContent = "";
+  $("#nameInput").value = "";
+  $("#nameScreen").classList.remove("hidden");
+  $("#nameInput").focus();
+}
+
 function startApp() {
   $("#nameScreen").classList.add("hidden");
   $("#app").classList.remove("hidden");
   $("#who").textContent = "👤 " + me;
+  $("#logout").classList.remove("hidden");
   if (!WEB_APP_URL) {
     showBanner("Demo mode: no scoreboard connected yet. Picks are saved on this phone only. (Add your Google Sheet link in app.js to share scores.)");
   }
@@ -261,6 +292,7 @@ async function init() {
     loadData().then(() => { renderMatches(); });
   });
   $("#nameInput").addEventListener("keydown", e => { if (e.key === "Enter") $("#nameSave").click(); });
+  $("#logout").addEventListener("click", logout);
 
   if (me) {
     startApp();

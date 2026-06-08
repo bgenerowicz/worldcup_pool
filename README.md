@@ -69,21 +69,24 @@ one phone, no shared scoreboard.)
 
 ### Knockout rounds (the "fill in later" part)
 
-Group-stage picks are live now. Knockout matchups depend on who advances, so
-add them **after the group stage ends (28 June)**:
+The **full knockout bracket is already built** into `matches.js` (Round of 32 →
+Final, with the real 2026 pairings and dates) — but it stays **hidden** until
+you switch it on, so the group stage stays the focus. Knockout matches have no
+draw: players pick **1 (home advances) / 2 (away advances)**.
 
-1. Edit [`matches.js`](matches.js) → fill the `KNOCKOUT_MATCHES` array using the
-   same shape as the group matches, e.g.:
-   ```js
-   const KNOCKOUT_MATCHES = [
-     { id: "r32_1", group: "R32", date: "2026-06-28", home: "Winner A", away: "Runner-up B" },
-     // ...
-   ];
-   ```
-2. Add the same rows to the **Results** tab of the sheet (MatchID + Result), or
-   re-run `setup` after also adding them to the `MATCHES` list inside
-   `apps-script.gs`.
-3. Re-upload `matches.js` to GitHub. The new round appears for everyone.
+When the group stage ends (**28 June**) and you know who qualified:
+
+1. **Edit the team names** in the `KNOCKOUT_MATCHES` array in
+   [`matches.js`](matches.js). Replace placeholders like `"Winner A"` /
+   `"3rd A/B/C/D/F"` with the real countries (e.g. `"Argentina"`). Using exact
+   country names makes the flags show up. You can do this round-by-round as
+   teams become known.
+2. **Flip the switch:** in `matches.js`, set `const KNOCKOUT_ENABLED = true;`
+3. **Re-upload `matches.js`** to GitHub — the knockout rounds now appear for
+   everyone to predict.
+4. **In the sheet:** open Apps Script and run the **`addKnockout`** function
+   once. It adds all knockout matches to the Results tab (with a home/away
+   dropdown) so you can score them just like the group games.
 
 ---
 

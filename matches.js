@@ -93,8 +93,60 @@ const MATCHES = [
   { id: "m72", group: "J", date: "2026-06-27", home: "Jordan", away: "Argentina" }
 ];
 
-// Knockout rounds get filled in AFTER the group stage (matchups depend on results).
-// Leave empty for now — see README for how to unlock them.
-const KNOCKOUT_MATCHES = [];
+// ---- Knockout rounds ----------------------------------------------------
+// Dormant until you flip KNOCKOUT_ENABLED to true (do that once the group
+// stage ends, after you've replaced the placeholder names with real teams).
+// While false, the app shows the "unlock later" message and ignores these.
+const KNOCKOUT_ENABLED = false;
 
-if (typeof module !== "undefined") { module.exports = { MATCHES, KNOCKOUT_MATCHES, FLAGS }; }
+// Real 2026 bracket structure with placeholder team names. After the group
+// stage: edit the home/away names below (e.g. "Winner A" → "Argentina"),
+// flip KNOCKOUT_ENABLED above, and re-upload. Knockout matches have no draw —
+// you pick which team goes through (1 = home, 2 = away).
+const KNOCKOUT_MATCHES = [
+  // Round of 32 — June 28 to July 3 (official pairings)
+  { id: "k32_01", round: "Round of 32", group: "", ko: true, date: "2026-06-28", home: "Runner-up A", away: "Runner-up B" },
+  { id: "k32_02", round: "Round of 32", group: "", ko: true, date: "2026-06-29", home: "Winner C", away: "Runner-up F" },
+  { id: "k32_03", round: "Round of 32", group: "", ko: true, date: "2026-06-29", home: "Winner E", away: "3rd A/B/C/D/F" },
+  { id: "k32_04", round: "Round of 32", group: "", ko: true, date: "2026-06-29", home: "Winner F", away: "Runner-up C" },
+  { id: "k32_05", round: "Round of 32", group: "", ko: true, date: "2026-06-30", home: "Runner-up E", away: "Runner-up I" },
+  { id: "k32_06", round: "Round of 32", group: "", ko: true, date: "2026-06-30", home: "Winner I", away: "3rd C/D/F/G/H" },
+  { id: "k32_07", round: "Round of 32", group: "", ko: true, date: "2026-06-30", home: "Winner A", away: "3rd C/E/F/H/I" },
+  { id: "k32_08", round: "Round of 32", group: "", ko: true, date: "2026-07-01", home: "Winner L", away: "3rd E/H/I/J/K" },
+  { id: "k32_09", round: "Round of 32", group: "", ko: true, date: "2026-07-01", home: "Winner G", away: "3rd A/E/H/I/J" },
+  { id: "k32_10", round: "Round of 32", group: "", ko: true, date: "2026-07-01", home: "Winner D", away: "3rd B/E/F/I/J" },
+  { id: "k32_11", round: "Round of 32", group: "", ko: true, date: "2026-07-02", home: "Winner H", away: "Runner-up J" },
+  { id: "k32_12", round: "Round of 32", group: "", ko: true, date: "2026-07-02", home: "Runner-up K", away: "Runner-up L" },
+  { id: "k32_13", round: "Round of 32", group: "", ko: true, date: "2026-07-02", home: "Winner B", away: "3rd E/F/G/I/J" },
+  { id: "k32_14", round: "Round of 32", group: "", ko: true, date: "2026-07-03", home: "Runner-up D", away: "Runner-up G" },
+  { id: "k32_15", round: "Round of 32", group: "", ko: true, date: "2026-07-03", home: "Winner J", away: "Runner-up H" },
+  { id: "k32_16", round: "Round of 32", group: "", ko: true, date: "2026-07-03", home: "Winner K", away: "3rd D/E/I/J/L" },
+
+  // Round of 16 — July 4 to 7
+  { id: "k16_1", round: "Round of 16", group: "", ko: true, date: "2026-07-04", home: "Winner R32-1", away: "Winner R32-2" },
+  { id: "k16_2", round: "Round of 16", group: "", ko: true, date: "2026-07-04", home: "Winner R32-3", away: "Winner R32-4" },
+  { id: "k16_3", round: "Round of 16", group: "", ko: true, date: "2026-07-05", home: "Winner R32-5", away: "Winner R32-6" },
+  { id: "k16_4", round: "Round of 16", group: "", ko: true, date: "2026-07-05", home: "Winner R32-7", away: "Winner R32-8" },
+  { id: "k16_5", round: "Round of 16", group: "", ko: true, date: "2026-07-06", home: "Winner R32-9", away: "Winner R32-10" },
+  { id: "k16_6", round: "Round of 16", group: "", ko: true, date: "2026-07-06", home: "Winner R32-11", away: "Winner R32-12" },
+  { id: "k16_7", round: "Round of 16", group: "", ko: true, date: "2026-07-07", home: "Winner R32-13", away: "Winner R32-14" },
+  { id: "k16_8", round: "Round of 16", group: "", ko: true, date: "2026-07-07", home: "Winner R32-15", away: "Winner R32-16" },
+
+  // Quarter-finals — July 9 to 11
+  { id: "kqf_1", round: "Quarter-finals", group: "", ko: true, date: "2026-07-09", home: "Winner R16-1", away: "Winner R16-2" },
+  { id: "kqf_2", round: "Quarter-finals", group: "", ko: true, date: "2026-07-10", home: "Winner R16-3", away: "Winner R16-4" },
+  { id: "kqf_3", round: "Quarter-finals", group: "", ko: true, date: "2026-07-10", home: "Winner R16-5", away: "Winner R16-6" },
+  { id: "kqf_4", round: "Quarter-finals", group: "", ko: true, date: "2026-07-11", home: "Winner R16-7", away: "Winner R16-8" },
+
+  // Semi-finals — July 14 & 15
+  { id: "ksf_1", round: "Semi-finals", group: "", ko: true, date: "2026-07-14", home: "Winner QF-1", away: "Winner QF-2" },
+  { id: "ksf_2", round: "Semi-finals", group: "", ko: true, date: "2026-07-15", home: "Winner QF-3", away: "Winner QF-4" },
+
+  // Third-place play-off — July 18
+  { id: "k3p", round: "Third-place Play-off", group: "", ko: true, date: "2026-07-18", home: "Loser SF-1", away: "Loser SF-2" },
+
+  // Final — July 19
+  { id: "kfinal", round: "Final", group: "", ko: true, date: "2026-07-19", home: "Winner SF-1", away: "Winner SF-2" }
+];
+
+if (typeof module !== "undefined") { module.exports = { MATCHES, KNOCKOUT_MATCHES, KNOCKOUT_ENABLED, FLAGS }; }

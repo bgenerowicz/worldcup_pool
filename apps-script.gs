@@ -99,6 +99,43 @@ const MATCHES = [
   ["m72","J","2026-06-27","Jordan","Argentina"]
 ];
 
+// Knockout matches [id, date, round, label]. Run addKnockout() AFTER the group
+// stage to append these to the Results tab so you can score them.
+const KNOCKOUT = [
+  ["k32_01","2026-06-28","Round of 32","Runner-up A v Runner-up B"],
+  ["k32_02","2026-06-29","Round of 32","Winner C v Runner-up F"],
+  ["k32_03","2026-06-29","Round of 32","Winner E v 3rd A/B/C/D/F"],
+  ["k32_04","2026-06-29","Round of 32","Winner F v Runner-up C"],
+  ["k32_05","2026-06-30","Round of 32","Runner-up E v Runner-up I"],
+  ["k32_06","2026-06-30","Round of 32","Winner I v 3rd C/D/F/G/H"],
+  ["k32_07","2026-06-30","Round of 32","Winner A v 3rd C/E/F/H/I"],
+  ["k32_08","2026-07-01","Round of 32","Winner L v 3rd E/H/I/J/K"],
+  ["k32_09","2026-07-01","Round of 32","Winner G v 3rd A/E/H/I/J"],
+  ["k32_10","2026-07-01","Round of 32","Winner D v 3rd B/E/F/I/J"],
+  ["k32_11","2026-07-02","Round of 32","Winner H v Runner-up J"],
+  ["k32_12","2026-07-02","Round of 32","Runner-up K v Runner-up L"],
+  ["k32_13","2026-07-02","Round of 32","Winner B v 3rd E/F/G/I/J"],
+  ["k32_14","2026-07-03","Round of 32","Runner-up D v Runner-up G"],
+  ["k32_15","2026-07-03","Round of 32","Winner J v Runner-up H"],
+  ["k32_16","2026-07-03","Round of 32","Winner K v 3rd D/E/I/J/L"],
+  ["k16_1","2026-07-04","Round of 16","Winner R32-1 v Winner R32-2"],
+  ["k16_2","2026-07-04","Round of 16","Winner R32-3 v Winner R32-4"],
+  ["k16_3","2026-07-05","Round of 16","Winner R32-5 v Winner R32-6"],
+  ["k16_4","2026-07-05","Round of 16","Winner R32-7 v Winner R32-8"],
+  ["k16_5","2026-07-06","Round of 16","Winner R32-9 v Winner R32-10"],
+  ["k16_6","2026-07-06","Round of 16","Winner R32-11 v Winner R32-12"],
+  ["k16_7","2026-07-07","Round of 16","Winner R32-13 v Winner R32-14"],
+  ["k16_8","2026-07-07","Round of 16","Winner R32-15 v Winner R32-16"],
+  ["kqf_1","2026-07-09","Quarter-finals","Winner R16-1 v Winner R16-2"],
+  ["kqf_2","2026-07-10","Quarter-finals","Winner R16-3 v Winner R16-4"],
+  ["kqf_3","2026-07-10","Quarter-finals","Winner R16-5 v Winner R16-6"],
+  ["kqf_4","2026-07-11","Quarter-finals","Winner R16-7 v Winner R16-8"],
+  ["ksf_1","2026-07-14","Semi-finals","Winner QF-1 v Winner QF-2"],
+  ["ksf_2","2026-07-15","Semi-finals","Winner QF-3 v Winner QF-4"],
+  ["k3p","2026-07-18","Third-place Play-off","Loser SF-1 v Loser SF-2"],
+  ["kfinal","2026-07-19","Final","Winner SF-1 v Winner SF-2"]
+];
+
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -126,6 +163,26 @@ function setup() {
   res.autoResizeColumns(1, 5);
 
   SpreadsheetApp.getUi && SpreadsheetApp.getActive().toast("Setup complete ✓");
+}
+
+// Run this once after the group stage to add the knockout matches to Results.
+// (Idempotent — won't add duplicates if you run it twice.)
+function addKnockout() {
+  const res = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_RES);
+  if (!res) throw new Error("Run setup() first.");
+  const existing = res.getLastRow() > 1
+    ? res.getRange(2, 1, res.getLastRow() - 1, 1).getValues().map(r => String(r[0]))
+    : [];
+  const toAdd = KNOCKOUT.filter(k => existing.indexOf(k[0]) === -1)
+    .map(k => [k[0], k[1], k[2], k[3], ""]);
+  if (!toAdd.length) { SpreadsheetApp.getActive().toast("Knockout already added."); return; }
+  const start = res.getLastRow() + 1;
+  res.getRange(start, 1, toAdd.length, 5).setValues(toAdd);
+  // Knockout has no draw — restrict those Result cells to home / away.
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(["home", "away"], true).setAllowInvalid(false).build();
+  res.getRange(start, 5, toAdd.length, 1).setDataValidation(rule);
+  SpreadsheetApp.getActive().toast(toAdd.length + " knockout matches added ✓");
 }
 
 function doGet(e) {
