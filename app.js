@@ -40,9 +40,27 @@ const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls)
 // regardless of match date. Set back to false to resume normal per-day locking.
 const LOCK_ALL_PICKS = false;
 
-// Can this pick still be edited? Locked globally, or once its match day starts.
+// How many days before a match everyone's guesses become visible.
+//   0 = on match day · 1 = the day before · 2 = two days before
+const REVEAL_DAYS_BEFORE = 1;
+
+// The moment a match's guesses become visible (local midnight, N days before).
+function revealTime(match) {
+  const d = new Date(match.date + "T00:00:00");
+  d.setDate(d.getDate() - REVEAL_DAYS_BEFORE);
+  return d;
+}
+
+// Are this match's guesses visible yet? (purely time-based, independent of the
+// global edit-lock — so freezing editing never exposes future matches' picks)
+function isRevealed(match) {
+  return new Date() >= revealTime(match);
+}
+
+// Can this pick still be EDITED? Frozen globally, or once the reveal time passes
+// (so a guess is never visible while its owner can still change it).
 function isLocked(match) {
-  return LOCK_ALL_PICKS || new Date() >= new Date(match.date + "T00:00:00");
+  return LOCK_ALL_PICKS || isRevealed(match);
 }
 
 function fmtDay(dateStr) {
@@ -141,8 +159,8 @@ function makeMatchCard(m) {
   row.appendChild(away);
   card.appendChild(row);
 
-  // Reveal everyone's picks + the result once the match is locked.
-  if (locked) {
+  // Reveal everyone's picks + the result once the match's reveal time passes.
+  if (isRevealed(m)) {
     const reveal = el("div", "reveal");
     if (actual) {
       const aLabel = actual === "home" ? m.home + " win" : actual === "away" ? m.away + " win" : "Draw";
