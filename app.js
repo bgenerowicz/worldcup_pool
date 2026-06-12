@@ -38,7 +38,7 @@ const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls)
 
 // 🔒 Set to true to FREEZE ALL picks immediately — nobody can change anything,
 // regardless of match date. Set back to false to resume normal per-day locking.
-const LOCK_ALL_PICKS = false;
+const LOCK_ALL_PICKS = true;
 
 // How many days before a match everyone's guesses become visible.
 //   0 = on match day · 1 = the day before · 2 = two days before
