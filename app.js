@@ -63,9 +63,17 @@ function isLocked(match) {
   return LOCK_ALL_PICKS || isRevealed(match);
 }
 
-function fmtDay(dateStr) {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+// All match times are shown in this timezone, regardless of the viewer's device.
+const TZ = "Europe/Amsterdam";
+
+function koDate(match) {
+  return new Date(match.kickoff || (match.date + "T12:00:00Z"));
+}
+function fmtDay(match) {
+  return koDate(match).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: TZ });
+}
+function fmtTime(match) {
+  return koDate(match).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
 }
 
 function toast(msg) {
@@ -128,7 +136,8 @@ function makeMatchCard(m) {
   if (locked) card.classList.add("locked");
 
   const top = el("div", "match-top");
-  top.appendChild(el("span", "grp", m.ko ? m.round : "Group " + m.group));
+  const meta = (m.ko ? m.round : "Group " + m.group) + (m.kickoff ? " · " + fmtTime(m) : "");
+  top.appendChild(el("span", "grp", meta));
   top.appendChild(el("span", "lock" + (locked ? " locked" : ""), locked ? "🔒 Locked" : "Open"));
   card.appendChild(top);
 
@@ -185,8 +194,12 @@ function renderMatches() {
   list.innerHTML = "";
   let lastHeader = null;
   // Knockout matches have no group letter, so a group filter hides them.
-  activeMatches().filter(m => filter === "all" || m.group === filter).forEach(m => {
-    const header = m.ko ? m.round : fmtDay(m.date);
+  activeMatches()
+    .filter(m => filter === "all" || m.group === filter)
+    .slice()
+    .sort((a, b) => (a.kickoff || a.date).localeCompare(b.kickoff || b.date))
+    .forEach(m => {
+    const header = m.ko ? m.round : fmtDay(m);
     if (header !== lastHeader) {
       list.appendChild(el("div", "day-head", header));
       lastHeader = header;
