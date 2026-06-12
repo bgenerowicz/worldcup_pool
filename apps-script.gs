@@ -23,6 +23,10 @@
 const SHEET_PRED = "Predictions";
 const SHEET_RES = "Results";
 
+// 🔒 Optional server-side lock. Left off — the front-end LOCK_ALL_PICKS flag
+// handles the freeze. Set to true only if you ever want an airtight backend lock.
+const POOL_LOCKED = false;
+
 // Mirror of the group-stage fixtures (used by setup() to fill the Results tab).
 const MATCHES = [
   ["m01","A","2026-06-11","Mexico","South Africa"],
@@ -211,6 +215,7 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  if (POOL_LOCKED) return json({ ok: false, locked: true });
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {

@@ -36,10 +36,13 @@ const matchById = Object.fromEntries(allMatches.map(m => [m.id, m]));
 const $ = sel => document.querySelector(sel);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
+// 🔒 Set to true to FREEZE ALL picks immediately — nobody can change anything,
+// regardless of match date. Set back to false to resume normal per-day locking.
+const LOCK_ALL_PICKS = true;
+
+// Can this pick still be edited? Locked globally, or once its match day starts.
 function isLocked(match) {
-  // Locks at local midnight at the start of the match's date.
-  const lock = new Date(match.date + "T00:00:00");
-  return new Date() >= lock;
+  return LOCK_ALL_PICKS || new Date() >= new Date(match.date + "T00:00:00");
 }
 
 function fmtDay(dateStr) {
@@ -138,7 +141,7 @@ function makeMatchCard(m) {
   row.appendChild(away);
   card.appendChild(row);
 
-  // After a match locks, reveal everyone's picks + the result.
+  // Reveal everyone's picks + the result once the match is locked.
   if (locked) {
     const reveal = el("div", "reveal");
     if (actual) {

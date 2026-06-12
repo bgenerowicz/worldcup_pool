@@ -90,6 +90,23 @@ When the group stage ends (**28 June**) and you know who qualified:
 
 ---
 
+### Automatic results (optional)
+
+Don't want to type results in by hand? [`auto-results.gs`](auto-results.gs) pulls
+finished scores from **ESPN's public scoreboard** (**no signup, no API key**) and
+fills the Result column for you.
+
+1. Paste `auto-results.gs` into your Apps Script project (new file).
+2. Run **`updateResults`** once and authorise it.
+3. Run **`installAutoUpdate`** once — it then runs every 30 minutes by itself.
+   (Run `removeAutoUpdate` to turn it off.)
+
+It only fills **empty** Result cells, so anything you set by hand always wins —
+auto + manual mix happily. It matches games to your fixtures by team name (with
+spelling/accents normalised) and tolerates the ±1-day timezone drift in the
+feed. Results usually land within minutes of full-time. Knockout games decided
+on penalties use ESPN's "advancing team" flag, but it's worth a glance at those.
+
 ## Files
 
 | File | What it is |
@@ -99,6 +116,8 @@ When the group stage ends (**28 June**) and you know who qualified:
 | `app.js` | App logic + the `WEB_APP_URL` you paste in |
 | `matches.js` | All 72 group fixtures (+ knockout slot) |
 | `apps-script.gs` | Paste into Google Apps Script (the backend) |
+| `auto-results.gs` | Optional — auto-fills results from a free feed |
+| `add-claude.gs` | Optional — adds "Claude 🤖" as a player |
 
 ## Notes & tweaks
 
