@@ -177,26 +177,30 @@ const BRACKET_R32 = [
 ];
 
 // Later rounds: each slot is fed by the winners of two earlier slots.
+// Pairings follow the official FIFA 2026 bracket (matches 73–104 in the FIFA
+// schedule). Top half (bsf_1) = M89/M90/M93/M94 winners; bottom half (bsf_2)
+// = M91/M92/M95/M96 winners. France (I) and Spain (H) sit in the same half
+// and can only meet in the semi-final, not the final.
 const BRACKET_TREE = {
   r16: [
-    { id: "b16_1", from: ["b32_01", "b32_03"] },
-    { id: "b16_2", from: ["b32_02", "b32_05"] },
-    { id: "b16_3", from: ["b32_04", "b32_06"] },
-    { id: "b16_4", from: ["b32_07", "b32_08"] },
-    { id: "b16_5", from: ["b32_11", "b32_12"] },
-    { id: "b16_6", from: ["b32_09", "b32_10"] },
-    { id: "b16_7", from: ["b32_14", "b32_16"] },
-    { id: "b16_8", from: ["b32_13", "b32_15"] },
+    { id: "b16_1", from: ["b32_03", "b32_06"] }, // M89: Ger/Par vs Fra/Swe
+    { id: "b16_2", from: ["b32_01", "b32_04"] }, // M90: SA/Can vs Ned/Mar
+    { id: "b16_3", from: ["b32_02", "b32_05"] }, // M91: Bra/Jpn vs CIV/Nor
+    { id: "b16_4", from: ["b32_07", "b32_08"] }, // M92: Mex/Ecu vs Eng/DRC
+    { id: "b16_5", from: ["b32_12", "b32_11"] }, // M93: Por/Cro vs Esp/Aut
+    { id: "b16_6", from: ["b32_10", "b32_09"] }, // M94: USA/Bos vs Bel/Sen
+    { id: "b16_7", from: ["b32_15", "b32_14"] }, // M95: Arg/CV vs Aus/Egy
+    { id: "b16_8", from: ["b32_13", "b32_16"] }, // M96: Sui/Alg vs Col/Gha
   ],
   qf: [
-    { id: "bqf_1", from: ["b16_1", "b16_2"] },
-    { id: "bqf_2", from: ["b16_5", "b16_6"] },
-    { id: "bqf_3", from: ["b16_3", "b16_4"] },
-    { id: "bqf_4", from: ["b16_7", "b16_8"] },
+    { id: "bqf_1", from: ["b16_1", "b16_2"] }, // M97
+    { id: "bqf_2", from: ["b16_5", "b16_6"] }, // M98
+    { id: "bqf_3", from: ["b16_3", "b16_4"] }, // M99
+    { id: "bqf_4", from: ["b16_7", "b16_8"] }, // M100
   ],
   sf: [
-    { id: "bsf_1", from: ["bqf_1", "bqf_2"] },
-    { id: "bsf_2", from: ["bqf_3", "bqf_4"] },
+    { id: "bsf_1", from: ["bqf_1", "bqf_2"] }, // M101 (top half)
+    { id: "bsf_2", from: ["bqf_3", "bqf_4"] }, // M102 (bottom half)
   ],
   final: [ { id: "bfinal", from: ["bsf_1", "bsf_2"] } ],
 };
