@@ -206,8 +206,11 @@ function renderMatches() {
     }
     list.appendChild(makeMatchCard(m));
   });
-  if (!KNOCKOUT_ENABLED && (filter === "all")) {
-    list.appendChild(el("div", "hint", "🏆 Knockout-round predictions unlock once the group stage finishes."));
+  if (filter === "all") {
+    const msg = (typeof BRACKET_ENABLED !== "undefined" && BRACKET_ENABLED)
+      ? "🏆 Group stage done — head to the <b>Bracket</b> tab to predict the knockouts!"
+      : "🏆 Knockout predictions unlock once the group stage finishes.";
+    list.appendChild(el("div", "hint", msg));
   }
   renderProgress();
 }
@@ -231,47 +234,249 @@ async function choose(matchId, pick, card) {
 function renderLeaderboard() {
   const box = $("#leaderboard");
   const players = {};
-  allPredictions.forEach(p => { players[p.name] = players[p.name] || { name: p.name, pts: 0, scored: 0 }; });
-  // also make sure I appear even with no scored games yet
-  if (me) players[me] = players[me] || { name: me, pts: 0, scored: 0 };
+  const ensure = n => (players[n] = players[n] || { name: n, group: 0, bracket: 0, pts: 0 });
+  allPredictions.forEach(p => ensure(p.name));
+  if (me) ensure(me);
 
-  let resultedCount = 0;
-  Object.keys(results).forEach(mid => { if (results[mid]) resultedCount++; });
-
+  // Group stage — 1 pt per correct outcome (m.. results are home/draw/away).
   allPredictions.forEach(p => {
-    if (results[p.matchId]) {
-      players[p.name].scored++;
-      if (p.pick === results[p.matchId]) players[p.name].pts++;
-    }
+    if (/^m/.test(p.matchId) && results[p.matchId] && p.pick === results[p.matchId]) players[p.name].group++;
   });
 
+  // Bracket — weighted round-set scoring: points for each team you correctly
+  // sent through a round, regardless of the matchup you projected.
+  const actual = actualWinnersByRound();
+  const predBy = {}; // name -> round -> Set(teams)
+  allPredictions.forEach(p => {
+    const node = bracketNodeById[p.matchId];
+    if (!node) return;
+    predBy[p.name] = predBy[p.name] || {};
+    (predBy[p.name][node.round] = predBy[p.name][node.round] || new Set()).add(p.pick);
+  });
+  Object.keys(players).forEach(name => {
+    const pr = predBy[name] || {};
+    ROUND_ORDER.forEach(r => {
+      if (!pr[r]) return;
+      let correct = 0; pr[r].forEach(t => { if (actual[r].has(t)) correct++; });
+      players[name].bracket += correct * ROUND_POINTS[r];
+    });
+  });
+
+  Object.values(players).forEach(p => { p.pts = p.group + p.bracket; });
   const rows = Object.values(players).sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name));
+
   box.innerHTML = "";
   if (!rows.length) {
-    box.appendChild(el("div", "empty", "No picks yet. Be the first — head to <b>My Picks</b>! ⚽"));
+    box.appendChild(el("div", "empty", "No picks yet — head to <b>Groups</b> or <b>Bracket</b>! ⚽"));
   } else {
     const lb = el("div", "lb");
     rows.forEach((r, i) => {
-      const row = el("div", "lb-row" + (r.name === me ? " me" : "") + (i === 0 && r.pts > 0 ? " top" : ""));
-      row.appendChild(el("div", "rank", i === 0 && r.pts > 0 ? "🏅" : "#" + (i + 1)));
+      const top = i === 0 && r.pts > 0;
+      const row = el("div", "lb-row" + (r.name === me ? " me" : "") + (top ? " top" : ""));
+      row.appendChild(el("div", "rank", top ? "🏅" : "#" + (i + 1)));
       row.appendChild(el("div", "pname", r.name + (r.name === me ? " (you)" : "")));
-      row.appendChild(el("div", "pts", `${r.pts} <small>pt${r.pts === 1 ? "" : "s"}</small>`));
+      row.appendChild(el("div", "pts", `${r.pts} <small>pts</small><small class="brk">G ${r.group} · B ${r.bracket}</small>`));
       lb.appendChild(row);
     });
     box.appendChild(lb);
   }
-  $("#resultsNote").textContent = resultedCount
-    ? `${resultedCount} match${resultedCount === 1 ? "" : "es"} scored so far · 1 point per correct outcome.`
-    : "Scores appear here as matches finish and results are entered. 1 point per correct outcome.";
+  $("#resultsNote").innerHTML = "<b>G</b> = group (1 pt/correct) · <b>B</b> = bracket (R32 2 · R16 3 · QF 4 · SF 5 · Final 6, per team that actually advances).";
+}
+
+// ===== KNOCKOUT BRACKET ==================================================
+const ROUND_LABELS = { r32: "Round of 32", r16: "Round of 16", qf: "Quarter-finals", sf: "Semi-finals", final: "Final" };
+const ROUND_ORDER = ["r32", "r16", "qf", "sf", "final"];
+
+// Flatten every bracket node in round order.
+const BRACKET_NODES = [];
+if (typeof BRACKET_R32 !== "undefined") {
+  BRACKET_R32.forEach(n => BRACKET_NODES.push({ id: n.id, round: "r32", home: n.home, away: n.away, kickoff: n.kickoff, date: n.date }));
+  ["r16", "qf", "sf", "final"].forEach(r => (BRACKET_TREE[r] || []).forEach(n => BRACKET_NODES.push({ id: n.id, round: r, from: n.from })));
+}
+const bracketNodeById = Object.fromEntries(BRACKET_NODES.map(n => [n.id, n]));
+const nodesByRound = r => BRACKET_NODES.filter(n => n.round === r);
+
+function bracketLocked() { return new Date() >= new Date(BRACKET_DEADLINE); }
+
+// The two candidate teams for a node, given a set of bracket picks.
+function nodeTeams(node, picks) {
+  if (node.round === "r32") return [node.home, node.away];
+  return node.from.map(f => picks[f] || null);
+}
+
+// After an upstream change, drop any downstream pick that's no longer reachable.
+function reconcileBracket(picks) {
+  ["r16", "qf", "sf", "final"].forEach(r => {
+    nodesByRound(r).forEach(n => {
+      if (picks[n.id] && nodeTeams(n, picks).indexOf(picks[n.id]) === -1) delete picks[n.id];
+    });
+  });
+}
+
+// Teams that ACTUALLY advanced out of each round (results[nodeId] = winner name).
+function actualWinnersByRound() {
+  const out = {};
+  ROUND_ORDER.forEach(r => {
+    out[r] = new Set();
+    nodesByRound(r).forEach(n => { if (results[n.id]) out[r].add(results[n.id]); });
+  });
+  return out;
+}
+
+const shortNode = id =>
+  id.indexOf("b32_") === 0 ? "R32·" + (+id.slice(4)) :
+  id.indexOf("b16_") === 0 ? "R16·" + id.slice(4) :
+  id.indexOf("bqf_") === 0 ? "QF·" + id.slice(4) :
+  id.indexOf("bsf_") === 0 ? "SF·" + id.slice(4) : "Final";
+
+function fmtDeadline() {
+  return new Date(BRACKET_DEADLINE).toLocaleString("en-GB",
+    { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: TZ });
+}
+
+let bracketView = null; // which player's bracket we're viewing (null = me)
+
+// Everyone who has at least one bracket pick (you first, then alphabetical).
+function bracketPlayers() {
+  const names = new Set();
+  allPredictions.forEach(p => { if (bracketNodeById[p.matchId]) names.add(p.name); });
+  if (me) names.add(me);
+  return [...names].sort((a, b) => (a === me ? -1 : b === me ? 1 : a.localeCompare(b)));
+}
+
+function bracketPicksOf(name) {
+  if (name === me) return myPicks;
+  const p = {};
+  allPredictions.forEach(x => { if (x.name === name && bracketNodeById[x.matchId]) p[x.matchId] = x.pick; });
+  return p;
+}
+
+function renderBracket() {
+  const box = $("#bracket");
+  if (typeof BRACKET_ENABLED === "undefined" || !BRACKET_ENABLED) {
+    box.innerHTML = '<div class="empty">🏆 The knockout bracket opens after the group stage.</div>';
+    return;
+  }
+  const locked = bracketLocked();
+  if (!locked) bracketView = null;          // others stay hidden until lock
+  const viewing = bracketView || me;
+  const isMine = viewing === me;
+  const editable = isMine && !locked;
+
+  if (isMine) reconcileBracket(myPicks);
+  const picks = bracketPicksOf(viewing);
+  box.innerHTML = "";
+
+  // Header
+  const head = el("div", "bracket-head");
+  if (editable) {
+    const done = BRACKET_NODES.filter(n => myPicks[n.id]).length;
+    head.innerHTML = `Tap a team to send them through. <b>${done}/${BRACKET_NODES.length}</b> picked · locks <b>${fmtDeadline()}</b>`;
+  } else if (!locked) {
+    head.innerHTML = `🔒 Read-only. Everyone's brackets reveal when picks lock (<b>${fmtDeadline()}</b>).`;
+  } else {
+    head.innerHTML = `🔒 Picks are final — browse anyone's bracket below.`;
+  }
+  box.appendChild(head);
+
+  // Player switcher — only after lock, so nobody can copy beforehand.
+  if (locked) {
+    const bar = el("div", "viewbar");
+    bar.appendChild(el("span", "viewbar-label", "Viewing"));
+    const sel = el("select", "viewsel");
+    bracketPlayers().forEach(name => {
+      const o = document.createElement("option");
+      o.value = name; o.textContent = name === me ? name + " (you)" : name;
+      if (name === viewing) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", () => { bracketView = sel.value; renderBracket(); });
+    bar.appendChild(sel);
+    box.appendChild(bar);
+  }
+
+  const actual = actualWinnersByRound();
+  ROUND_ORDER.forEach(r => {
+    const sec = el("div", "kround");
+    const pts = ROUND_POINTS[r];
+    sec.appendChild(el("div", "kround-head", `${ROUND_LABELS[r]} · ${pts} pt${pts > 1 ? "s" : ""} each`));
+    nodesByRound(r).forEach(n => sec.appendChild(makeBracketNode(n, picks, editable, actual)));
+    box.appendChild(sec);
+  });
+
+  const champ = picks["bfinal"];
+  const who = isMine ? "Your" : viewing + "’s";
+  const banner = el("div", "champ");
+  banner.innerHTML = champ
+    ? `🏆 ${who} champion: <span class="flag">${FLAGS[champ] || "🏳️"}</span> <b>${champ}</b>`
+    : `🏆 ${who} champion: <i>not picked</i>`;
+  box.appendChild(banner);
+}
+
+function makeBracketNode(n, picks, editable, actual) {
+  const card = el("div", "knode" + (editable ? "" : " locked"));
+  if (n.round === "r32" && n.kickoff) card.appendChild(el("div", "knode-meta", fmtDay(n) + " · " + fmtTime(n)));
+  const teams = nodeTeams(n, picks);
+  const pick = picks[n.id];
+  const wrap = el("div", "knode-teams");
+  teams.forEach((team, i) => {
+    const btn = el("button", "kteam");
+    if (!team) {
+      btn.classList.add("tbd");
+      const fid = n.from && n.from[i];
+      btn.innerHTML = `<span class="name">Winner of ${fid ? shortNode(fid) : "TBD"}</span>`;
+      btn.disabled = true;
+    } else {
+      btn.innerHTML = `<span class="flag">${FLAGS[team] || "🏳️"}</span><span class="name">${team}</span>`;
+      if (pick === team) {
+        btn.classList.add("sel");
+        if (actual[n.round] && actual[n.round].size) btn.classList.add(actual[n.round].has(team) ? "good" : "bad");
+      }
+      if (editable) btn.addEventListener("click", () => chooseBracket(n.id, team));
+      else btn.disabled = true;
+    }
+    wrap.appendChild(btn);
+  });
+  card.appendChild(wrap);
+  return card;
+}
+
+function chooseBracket(nodeId, team) {
+  if (myPicks[nodeId] === team) return;
+  myPicks[nodeId] = team;
+  reconcileBracket(myPicks);
+  localStorage.setItem("wc_picks", JSON.stringify(myPicks));
+  // mirror my bracket into allPredictions for the leaderboard
+  allPredictions = allPredictions.filter(p => !(p.name === me && /^b/.test(p.matchId)));
+  BRACKET_NODES.forEach(n => { if (myPicks[n.id]) allPredictions.push({ name: me, matchId: n.id, pick: myPicks[n.id] }); });
+  renderBracket();
+  scheduleBracketSave();
+}
+
+let _bracketSaveT;
+function scheduleBracketSave() {
+  clearTimeout(_bracketSaveT);
+  _bracketSaveT = setTimeout(saveBracketRemote, 700);
+}
+async function saveBracketRemote() {
+  const picks = {};
+  BRACKET_NODES.forEach(n => { if (myPicks[n.id]) picks[n.id] = myPicks[n.id]; });
+  if (!WEB_APP_URL) { toast("Saved on this phone"); return; }
+  try {
+    await fetch(WEB_APP_URL, { method: "POST", body: JSON.stringify({ action: "saveBracket", name: me, picks }) });
+    toast("Bracket saved ✓");
+  } catch (e) { toast("Saved on this phone (will sync)"); }
 }
 
 // --- tabs ---
 function switchTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   $("#tab-picks").classList.toggle("hidden", name !== "picks");
+  $("#tab-bracket").classList.toggle("hidden", name !== "bracket");
   $("#tab-board").classList.toggle("hidden", name !== "board");
   if (name === "board") renderLeaderboard();
   if (name === "picks") renderMatches();
+  if (name === "bracket") renderBracket();
 }
 
 // --- init ---

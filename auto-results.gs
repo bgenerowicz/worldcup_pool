@@ -137,6 +137,9 @@ function updateResults() {
     written++;
   });
 
+  // Also fill the knockout bracket winners (separate, team-name based).
+  try { updateBracketResults(); } catch (e) { Logger.log("bracket: " + e); }
+
   let msg;
   if (written) msg = written + " result(s) auto-filled ✓";
   else if (problems.length) msg = "Feed problem — " + problems[0];
@@ -144,6 +147,76 @@ function updateResults() {
   else msg = "Checked " + fetchedEvents + " feed games — none of the still-blank matches are finished yet.";
   Logger.log(msg + (problems.length ? " | issues: " + problems.join("; ") : ""));
   ss.toast(msg);
+}
+
+// ----- Knockout bracket results --------------------------------------------
+// Writes the WINNING TEAM NAME into each bracket node's Result cell, matched
+// positionally (round + chronological order) to ESPN — the same order the app's
+// bracket uses. Fills only empty cells. Needs setupBracket() to have run.
+const BRACKET_ROUNDS = [
+  { from: "2026-06-28", to: "2026-07-04", nodes: ["b32_01","b32_02","b32_03","b32_04","b32_05","b32_06","b32_07","b32_08","b32_09","b32_10","b32_11","b32_12","b32_13","b32_14","b32_15","b32_16"] },
+  { from: "2026-07-04", to: "2026-07-08", nodes: ["b16_1","b16_2","b16_3","b16_4","b16_5","b16_6","b16_7","b16_8"] },
+  { from: "2026-07-09", to: "2026-07-13", nodes: ["bqf_1","bqf_2","bqf_3","bqf_4"] },
+  { from: "2026-07-14", to: "2026-07-16", nodes: ["bsf_1","bsf_2"] },
+  { from: "2026-07-19", to: "2026-07-20", nodes: ["bfinal"] }  // final only (skips 3rd-place on the 18th)
+];
+
+const OUR_TEAMS = [
+  "Mexico","South Africa","South Korea","Czechia","Canada","Bosnia and Herzegovina","Qatar","Switzerland",
+  "Brazil","Morocco","Haiti","Scotland","United States","Paraguay","Australia","Türkiye","Germany","Curaçao",
+  "Ivory Coast","Ecuador","Netherlands","Japan","Sweden","Tunisia","Belgium","Egypt","Iran","New Zealand",
+  "Spain","Cape Verde","Saudi Arabia","Uruguay","France","Senegal","Iraq","Norway","Argentina","Algeria",
+  "Austria","Jordan","Portugal","DR Congo","Uzbekistan","Colombia","England","Croatia","Ghana","Panama"
+];
+function ourName_(espn) {
+  const c = canon_(espn);
+  for (let i = 0; i < OUR_TEAMS.length; i++) if (canon_(OUR_TEAMS[i]) === c) return OUR_TEAMS[i];
+  return espn;
+}
+
+function updateBracketResults() {
+  const res = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_RES);
+  if (!res || res.getLastRow() < 2) return;
+  const ids = res.getRange(2, 1, res.getLastRow() - 1, 1).getValues().map(r => String(r[0]));
+  const cur = res.getRange(2, 5, res.getLastRow() - 1, 1).getValues().map(r => String(r[0]).trim());
+  const rowOf = {}; ids.forEach((id, i) => rowOf[id] = i + 2);
+  const today = new Date().toISOString().slice(0, 10);
+
+  BRACKET_ROUNDS.forEach(rd => {
+    const anyEmpty = rd.nodes.some(id => rowOf[id] && !cur[rowOf[id] - 2]);
+    if (!anyEmpty || rd.from > today) return;
+    const evs = {};
+    let d = rd.from;
+    while (d <= rd.to) {
+      try {
+        const resp = UrlFetchApp.fetch(ESPN + d.replace(/-/g, ""), {
+          muteHttpExceptions: true, followRedirects: true,
+          headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json" }
+        });
+        if (resp.getResponseCode() === 200) (JSON.parse(resp.getContentText() || "{}").events || []).forEach(ev => evs[ev.id] = ev);
+      } catch (e) { /* retry next run */ }
+      d = shiftDate_(d, 1);
+      Utilities.sleep(250);
+    }
+    const list = Object.keys(evs).map(k => evs[k]).sort((a, b) => a.date < b.date ? -1 : 1);
+    for (let i = 0; i < rd.nodes.length && i < list.length; i++) {
+      const row = rowOf[rd.nodes[i]];
+      if (!row || cur[row - 2]) continue;
+      const w = winnerName_(list[i]);
+      if (w) { res.getRange(row, 5).setValue(w); cur[row - 2] = w; }
+    }
+  });
+}
+
+function winnerName_(ev) {
+  if (!(ev.status && ev.status.type && ev.status.type.completed)) return null;
+  const cs = (ev.competitions && ev.competitions[0] && ev.competitions[0].competitors) || [];
+  const h = cs.filter(c => c.homeAway === "home")[0], a = cs.filter(c => c.homeAway === "away")[0];
+  if (!h || !a) return null;
+  let win = null;
+  if (h.winner) win = h; else if (a.winner) win = a;
+  else { const hs = Number(h.score), as = Number(a.score); if (hs > as) win = h; else if (as > hs) win = a; else return null; }
+  return ourName_(win.team.displayName);
 }
 
 // Quick diagnostic — run this and read the popup to see if the feed is reachable.

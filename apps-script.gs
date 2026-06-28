@@ -189,6 +189,38 @@ function addKnockout() {
   SpreadsheetApp.getActive().toast(toAdd.length + " knockout matches added ✓");
 }
 
+// Bracket node ids per round, in the SAME chronological order ESPN lists them.
+const BRACKET_NODE_IDS = {
+  r32: ["b32_01","b32_02","b32_03","b32_04","b32_05","b32_06","b32_07","b32_08",
+        "b32_09","b32_10","b32_11","b32_12","b32_13","b32_14","b32_15","b32_16"],
+  r16: ["b16_1","b16_2","b16_3","b16_4","b16_5","b16_6","b16_7","b16_8"],
+  qf:  ["bqf_1","bqf_2","bqf_3","bqf_4"],
+  sf:  ["bsf_1","bsf_2"],
+  final: ["bfinal"]
+};
+
+// Adds the 31 bracket nodes to the Results tab so the winning team of each can
+// be recorded (auto-results fills these, or type the team name by hand).
+// Result cell = the team that advanced (e.g. "Brazil"). Run once.
+function setupBracket() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const res = ss.getSheetByName(SHEET_RES);
+  if (!res) throw new Error("Run setup() first.");
+  const existing = res.getLastRow() > 1
+    ? res.getRange(2, 1, res.getLastRow() - 1, 1).getValues().map(r => String(r[0]))
+    : [];
+  const labels = { r32: "Round of 32", r16: "Round of 16", qf: "Quarter-final", sf: "Semi-final", final: "Final" };
+  const rows = [];
+  Object.keys(BRACKET_NODE_IDS).forEach(rnd => {
+    BRACKET_NODE_IDS[rnd].forEach(id => {
+      if (existing.indexOf(id) === -1) rows.push([id, "", labels[rnd], labels[rnd] + " (winner)", ""]);
+    });
+  });
+  if (!rows.length) { SpreadsheetApp.getActive().toast("Bracket nodes already present."); return; }
+  res.getRange(res.getLastRow() + 1, 1, rows.length, 5).setValues(rows);
+  SpreadsheetApp.getActive().toast(rows.length + " bracket nodes added ✓");
+}
+
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const predSheet = ss.getSheetByName(SHEET_PRED);
@@ -206,8 +238,14 @@ function doGet(e) {
   if (resSheet && resSheet.getLastRow() > 1) {
     const vals = resSheet.getRange(2, 1, resSheet.getLastRow() - 1, 5).getValues();
     vals.forEach(r => {
-      const id = String(r[0]); const out = String(r[4]).trim().toLowerCase();
-      if (id && (out === "home" || out === "draw" || out === "away")) results[id] = out;
+      const id = String(r[0]); const raw = String(r[4]).trim();
+      if (!id || !raw) return;
+      if (id.indexOf("b") === 0) {
+        results[id] = raw; // bracket node → winning team name
+      } else {
+        const out = raw.toLowerCase();
+        if (out === "home" || out === "draw" || out === "away") results[id] = out;
+      }
     });
   }
 
@@ -224,6 +262,8 @@ function doPost(e) {
       savePick(body.name, body.matchId, body.pick);
     } else if (body.action === "savePicks" && Array.isArray(body.picks)) {
       body.picks.forEach(p => savePick(body.name, p.matchId, p.pick));
+    } else if (body.action === "saveBracket") {
+      saveBracket(body.name, body.picks || {});
     } else {
       return json({ ok: false, error: "unknown action" });
     }
@@ -236,11 +276,15 @@ function doPost(e) {
 }
 
 // Upsert one (name, matchId) → pick.
+// Group/knockout-match picks are home/draw/away; bracket-node picks (ids starting
+// with "b") are team names, kept verbatim.
 function savePick(name, matchId, pick) {
   name = String(name).trim();
   matchId = String(matchId).trim();
-  pick = String(pick).trim().toLowerCase();
-  if (!name || !matchId || ["home", "draw", "away"].indexOf(pick) === -1) return;
+  var isBracket = matchId.indexOf("b") === 0;
+  pick = isBracket ? String(pick).trim() : String(pick).trim().toLowerCase();
+  if (!name || !matchId || !pick) return;
+  if (!isBracket && ["home", "draw", "away"].indexOf(pick) === -1) return;
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PRED);
   const last = sheet.getLastRow();
@@ -254,6 +298,31 @@ function savePick(name, matchId, pick) {
     }
   }
   sheet.appendRow([new Date(), name, matchId, pick]);
+}
+
+// Replace a player's entire bracket in one shot: clear their existing bracket
+// rows (matchId starting with "b"), then write the current picks.
+function saveBracket(name, picks) {
+  name = String(name).trim();
+  if (!name) return;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PRED);
+  const last = sheet.getLastRow();
+  if (last > 1) {
+    const vals = sheet.getRange(2, 2, last - 1, 2).getValues(); // Name, MatchID
+    // delete from the bottom up so row indices stay valid
+    for (let i = vals.length - 1; i >= 0; i--) {
+      if (String(vals[i][0]) === name && String(vals[i][1]).indexOf("b") === 0) {
+        sheet.deleteRow(i + 2);
+      }
+    }
+  }
+  const now = new Date();
+  const rows = [];
+  Object.keys(picks).forEach(id => {
+    const team = String(picks[id]).trim();
+    if (id && team) rows.push([now, name, id, team]);
+  });
+  if (rows.length) sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 4).setValues(rows);
 }
 
 function json(obj) {

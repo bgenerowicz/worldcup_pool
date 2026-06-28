@@ -29,7 +29,16 @@ function addClaude() {
     m49: "home", m50: "home", m51: "away", m52: "home", m53: "away", m54: "away",
     m55: "away", m56: "away", m57: "home", m58: "away", m59: "draw", m60: "home",
     m61: "draw", m62: "home", m63: "draw", m64: "away", m65: "draw", m66: "away",
-    m67: "away", m68: "home", m69: "draw", m70: "home", m71: "draw", m72: "away"
+    m67: "away", m68: "home", m69: "draw", m70: "home", m71: "draw", m72: "away",
+    // --- Knockout bracket (team names; champion = Spain) ---
+    b32_01: "Canada", b32_02: "Brazil", b32_03: "Germany", b32_04: "Netherlands",
+    b32_05: "Norway", b32_06: "France", b32_07: "Mexico", b32_08: "England",
+    b32_09: "Belgium", b32_10: "United States", b32_11: "Spain", b32_12: "Portugal",
+    b32_13: "Switzerland", b32_14: "Egypt", b32_15: "Argentina", b32_16: "Colombia",
+    b16_1: "Germany", b16_2: "Brazil", b16_3: "France", b16_4: "England",
+    b16_5: "Spain", b16_6: "Belgium", b16_7: "Colombia", b16_8: "Argentina",
+    bqf_1: "Brazil", bqf_2: "Spain", bqf_3: "France", bqf_4: "Argentina",
+    bsf_1: "Spain", bsf_2: "Argentina", bfinal: "Spain"
   };
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Predictions");

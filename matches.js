@@ -149,4 +149,56 @@ const KNOCKOUT_MATCHES = [
   { id: "kfinal", round: "Final", group: "", ko: true, date: "2026-07-19", home: "Winner SF-1", away: "Winner SF-2" }
 ];
 
-if (typeof module !== "undefined") { module.exports = { MATCHES, KNOCKOUT_MATCHES, KNOCKOUT_ENABLED, FLAGS }; }
+
+// ===== KNOCKOUT BRACKET (full-bracket prediction) =====================
+// Predict the whole bracket up front. Weighted scoring per round:
+const BRACKET_ENABLED = true;
+const BRACKET_DEADLINE = "2026-06-28T19:00Z"; // first R32 kickoff — bracket locks here
+const ROUND_POINTS = { r32: 2, r16: 3, qf: 4, sf: 5, final: 6 };
+
+// Round of 32 — real matchups (auto-pulled from ESPN).
+const BRACKET_R32 = [
+  { id: "b32_01", round: "r32", date: "2026-06-28", kickoff: "2026-06-28T19:00Z", home: "South Africa", away: "Canada" },
+  { id: "b32_02", round: "r32", date: "2026-06-29", kickoff: "2026-06-29T17:00Z", home: "Brazil", away: "Japan" },
+  { id: "b32_03", round: "r32", date: "2026-06-29", kickoff: "2026-06-29T20:30Z", home: "Germany", away: "Paraguay" },
+  { id: "b32_04", round: "r32", date: "2026-06-30", kickoff: "2026-06-30T01:00Z", home: "Netherlands", away: "Morocco" },
+  { id: "b32_05", round: "r32", date: "2026-06-30", kickoff: "2026-06-30T17:00Z", home: "Ivory Coast", away: "Norway" },
+  { id: "b32_06", round: "r32", date: "2026-06-30", kickoff: "2026-06-30T21:00Z", home: "France", away: "Sweden" },
+  { id: "b32_07", round: "r32", date: "2026-07-01", kickoff: "2026-07-01T01:00Z", home: "Mexico", away: "Ecuador" },
+  { id: "b32_08", round: "r32", date: "2026-07-01", kickoff: "2026-07-01T16:00Z", home: "England", away: "DR Congo" },
+  { id: "b32_09", round: "r32", date: "2026-07-01", kickoff: "2026-07-01T20:00Z", home: "Belgium", away: "Senegal" },
+  { id: "b32_10", round: "r32", date: "2026-07-02", kickoff: "2026-07-02T00:00Z", home: "United States", away: "Bosnia and Herzegovina" },
+  { id: "b32_11", round: "r32", date: "2026-07-02", kickoff: "2026-07-02T19:00Z", home: "Spain", away: "Austria" },
+  { id: "b32_12", round: "r32", date: "2026-07-03", kickoff: "2026-07-02T23:00Z", home: "Portugal", away: "Croatia" },
+  { id: "b32_13", round: "r32", date: "2026-07-03", kickoff: "2026-07-03T03:00Z", home: "Switzerland", away: "Algeria" },
+  { id: "b32_14", round: "r32", date: "2026-07-03", kickoff: "2026-07-03T18:00Z", home: "Australia", away: "Egypt" },
+  { id: "b32_15", round: "r32", date: "2026-07-04", kickoff: "2026-07-03T22:00Z", home: "Argentina", away: "Cape Verde" },
+  { id: "b32_16", round: "r32", date: "2026-07-04", kickoff: "2026-07-04T01:30Z", home: "Colombia", away: "Ghana" },
+];
+
+// Later rounds: each slot is fed by the winners of two earlier slots.
+const BRACKET_TREE = {
+  r16: [
+    { id: "b16_1", from: ["b32_01", "b32_03"] },
+    { id: "b16_2", from: ["b32_02", "b32_05"] },
+    { id: "b16_3", from: ["b32_04", "b32_06"] },
+    { id: "b16_4", from: ["b32_07", "b32_08"] },
+    { id: "b16_5", from: ["b32_11", "b32_12"] },
+    { id: "b16_6", from: ["b32_09", "b32_10"] },
+    { id: "b16_7", from: ["b32_14", "b32_16"] },
+    { id: "b16_8", from: ["b32_13", "b32_15"] },
+  ],
+  qf: [
+    { id: "bqf_1", from: ["b16_1", "b16_2"] },
+    { id: "bqf_2", from: ["b16_5", "b16_6"] },
+    { id: "bqf_3", from: ["b16_3", "b16_4"] },
+    { id: "bqf_4", from: ["b16_7", "b16_8"] },
+  ],
+  sf: [
+    { id: "bsf_1", from: ["bqf_1", "bqf_2"] },
+    { id: "bsf_2", from: ["bqf_3", "bqf_4"] },
+  ],
+  final: [ { id: "bfinal", from: ["bsf_1", "bsf_2"] } ],
+};
+
+if (typeof module !== "undefined") { module.exports = { MATCHES, KNOCKOUT_MATCHES, KNOCKOUT_ENABLED, BRACKET_ENABLED, BRACKET_DEADLINE, ROUND_POINTS, BRACKET_R32, BRACKET_TREE, FLAGS }; }

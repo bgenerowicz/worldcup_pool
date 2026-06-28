@@ -31,7 +31,8 @@
   <!-- Main app -->
   <main id="app" class="hidden">
     <nav class="tabs">
-      <button class="tab active" data-tab="picks">My Picks</button>
+      <button class="tab active" data-tab="picks">Groups</button>
+      <button class="tab" data-tab="bracket">Bracket</button>
       <button class="tab" data-tab="board">Leaderboard</button>
     </nav>
 
@@ -46,6 +47,11 @@
         </select>
       </div>
       <div id="matchList"></div>
+    </section>
+
+    <!-- Bracket tab -->
+    <section id="tab-bracket" class="tabpane hidden">
+      <div id="bracket"></div>
     </section>
 
     <!-- Leaderboard tab -->
