@@ -153,7 +153,7 @@ const KNOCKOUT_MATCHES = [
 // ===== KNOCKOUT BRACKET (full-bracket prediction) =====================
 // Predict the whole bracket up front. Weighted scoring per round:
 const BRACKET_ENABLED = true;
-const BRACKET_DEADLINE = "2026-06-28T19:00Z"; // first R32 kickoff — bracket locks here
+const BRACKET_DEADLINE = "2026-06-29T19:00Z"; // open for entry; locks Mon 29 Jun 21:00 Amsterdam
 const ROUND_POINTS = { r32: 2, r16: 3, qf: 4, sf: 5, final: 6 };
 
 // Round of 32 — real matchups (auto-pulled from ESPN).
