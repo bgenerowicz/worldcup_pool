@@ -170,13 +170,17 @@ button.primary:active { transform: scale(.99); }
   cursor: pointer; text-align: left; transition: all .12s;
 }
 .kteam .flag { font-size: 20px; line-height: 1; }
-.kteam.sel { background: var(--pick-bg); border-color: var(--pick); color: var(--pick); }
+/* a chosen-but-not-yet-decided pick: neutral highlight, NOT green */
+.kteam.sel { background: #eef2f0; border-color: #16201c; color: #16201c; font-weight: 700; }
 .kteam.tbd { color: var(--muted); font-weight: 500; font-style: italic; cursor: default; background: #fafbfb; }
 .kteam.tbd .name { font-size: 13px; }
 .kteam:disabled { cursor: default; }
 .knode.locked .kteam:not(.sel) { opacity: .5; }
+/* decided picks override .sel — green = right, red = wrong, with a clear mark */
 .kteam.good { background: #e6f6ec; border-color: var(--win); color: var(--win); }
 .kteam.bad { background: #fdeaea; border-color: var(--lose); color: var(--lose); }
+.kteam.good::after { content: "✓"; margin-left: auto; font-weight: 800; font-size: 16px; }
+.kteam.bad::after { content: "✗"; margin-left: auto; font-weight: 800; font-size: 16px; }
 
 .champ {
   position: sticky; bottom: 12px; margin-top: 8px;
