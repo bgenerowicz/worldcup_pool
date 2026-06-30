@@ -430,7 +430,16 @@ function makeBracketNode(n, picks, editable, actual) {
       btn.innerHTML = `<span class="flag">${FLAGS[team] || "🏳️"}</span><span class="name">${team}</span>`;
       if (pick === team) {
         btn.classList.add("sel");
-        if (actual[n.round] && actual[n.round].size) btn.classList.add(actual[n.round].has(team) ? "good" : "bad");
+        const advanced = actual[n.round] && actual[n.round].has(team);
+        // Only flag a pick wrong once its match is actually decided.
+        // R32 nodes are real matchups, so a result on the node settles it.
+        // Later rounds: a projected matchup may not match reality, so wait until
+        // the whole round is resolved before calling any pick wrong.
+        const decided = n.round === "r32"
+          ? !!results[n.id]
+          : nodesByRound(n.round).every(x => results[x.id]);
+        if (advanced) btn.classList.add("good");
+        else if (decided) btn.classList.add("bad");
       }
       if (editable) btn.addEventListener("click", () => chooseBracket(n.id, team));
       else btn.disabled = true;
